@@ -6,11 +6,15 @@ buildscript {
 
     dependencies {
         classpath 'com.android.tools.build:gradle:3.0.1'
+        classpath 'com.google.gms:google-services:4.0.1' // google-services plugin
     }
 }
 
 allprojects {
     repositories {
+            maven {
+        url "https://maven.google.com"
+    }
         google()
         jcenter()
     }
