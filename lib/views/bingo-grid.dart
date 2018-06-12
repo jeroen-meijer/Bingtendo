@@ -21,22 +21,22 @@ class BingoGrid extends StatefulWidget {
     int result = 0;
 
     // horizontally
-    debugPrint("--HORIZONTALLY--");
+    // debugPrint("--HORIZONTALLY--");
     for (var i = 0; i < 5; i++) {
       int index = i * 5;
-      debugPrint("-----");
+      // debugPrint("-----");
 
       bool isBingo = true;
       for (var tile in tiles.getRange(index, index + 5)) {
-        debugPrint("Tile: ${tile.title}, isChecked: ${tile.isChecked}");
-        if (tile.isChecked == false) isBingo = false;
+        // debugPrint("Tile: ${tile.title}, isChecked: ${tile.isChecked}");
+        if (tile.isFree == false && tile.isChecked == false) isBingo = false;
       }
-      debugPrint("isBingo: $isBingo");
+      // debugPrint("isBingo: $isBingo");
       if (isBingo) result++;
     }
 
     //vertically
-    debugPrint("--VERTICALLY--");
+    // debugPrint("--VERTICALLY--");
     for (var i = 0; i < 5; i++) {
       bool isBingo = true;
       List<BingoTile> verticalTiles = [];
@@ -47,12 +47,14 @@ class BingoGrid extends StatefulWidget {
       verticalTiles.add(tiles[i+20]);
 
       for (var tile in verticalTiles) {
-        debugPrint("Tile: ${tile.title}, isChecked: ${tile.isChecked}");
-        if (tile.isChecked == false) isBingo = false;
+        // debugPrint("Tile: ${tile.title}, isChecked: ${tile.isChecked}");
+        if (tile.isFree == false && tile.isChecked == false) isBingo = false;
       }
-      debugPrint("isBingo: $isBingo");
+      // debugPrint("isBingo: $isBingo");
       if (isBingo) result++;
     }
+
+    debugPrint("Amount of bingo's: $result");
 
     return result;
   }

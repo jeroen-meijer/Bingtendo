@@ -1,6 +1,8 @@
 import 'package:bingtendo/user.dart';
 import 'package:flutter/material.dart';
 
+import 'dart:math';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -37,7 +39,7 @@ class _MyHomePageState extends State<HomePage> {
   List<String> visibleTileIds = [];
 
   initializeUser() async {
-    await FirebaseAuth.instance.signOut();
+    // await FirebaseAuth.instance.signOut();
     FirebaseUser newUser = await FirebaseAuth.instance.currentUser();
     if (newUser == null) {
       newUser = await FirebaseAuth.instance.signInAnonymously();
@@ -49,7 +51,8 @@ class _MyHomePageState extends State<HomePage> {
               .getDocuments())
           .documents;
 
-      newUserTileDocSnaps.shuffle();
+      newUserTileDocSnaps.shuffle(Random());
+
       int max =
           newUserTileDocSnaps.length >= 25 ? 25 : newUserTileDocSnaps.length;
       newUserTileDocSnaps = newUserTileDocSnaps.getRange(0, max).toList();
@@ -102,23 +105,41 @@ class _MyHomePageState extends State<HomePage> {
                       if (!snapshot.hasData) return loadingAnimation;
 
                       List<DocumentSnapshot> visibleTiles = [];
-                      for (var snap in snapshot.data.documents) {
-                        if (visibleTileIds.contains(snap.documentID))
-                          visibleTiles.add(snap);
+                      for (var id in visibleTileIds) {
+                        for (var snap in snapshot.data.documents) {
+                          if (snap.documentID == id) visibleTiles.add(snap);
+                        }
                       }
 
                       BingoGrid grid = BingoGrid(
-                              width: 5,
-                              height: 5,
-                              documents: visibleTiles);
+                          width: 5, height: 5, documents: visibleTiles);
+
+                      TextStyle bingoFontStyle = TextStyle(fontSize: 30.0);
 
                       return new Column(
                         mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
-                          Text(header),
-                          Text(snapshot.data.documents[0].data["title"]),
+                          Text(header, style: TextStyle(color: Colors.grey)),
+                          (grid.amountOfBingos == 0)
+                              ? Text(
+                                  "Je hebt nog geen bingo's!",
+                                  style: bingoFontStyle,
+                                  textAlign: TextAlign.center,
+                                )
+                              : Text(
+                                  "Je hebt ${grid.amountOfBingos} bingo" +
+                                      ((grid.amountOfBingos != 1) ? "'s" : "") +
+                                      "!",
+                                  style: bingoFontStyle,
+                                  textAlign: TextAlign.center),
                           grid,
-                          Text("Bingos: ${grid.amountOfBingos}")
+                          new Padding(
+                            padding: const EdgeInsets.all(15.0),
+                            child: Text(
+                                "Gemaakt door Pengi#6969 met hulp van Jeffzzzzzz, Rocksheep, KlaagHamster en heel #kroeg-nl in minder dan een dag!",
+                                style: TextStyle(color: Colors.grey),
+                                textAlign: TextAlign.center),
+                          )
                         ],
                       );
                     },
