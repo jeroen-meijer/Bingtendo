@@ -7,13 +7,14 @@ class BingoTile extends StatefulWidget {
   static final String collectionName = "tiles";
 
   BingoTile(
-      {this.isFree: false, this.isChecked: false, this.title, this.submitters});
+      {this.reference, this.isFree: false, this.isChecked: false, this.title}) {
+    this.isChecked = (this.isFree) ? true : this.isChecked;
+  }
 
+  DocumentReference reference;
   bool isFree;
   bool isChecked;
   String title;
-  List<String> submitters;
-  //TODO: (@jeroen-meijer) Add image.
 
   static Future<List<BingoTile>> getAllOptions() async =>
       (await Firestore.instance
@@ -26,47 +27,53 @@ class BingoTile extends StatefulWidget {
     List<BingoTile> result = [];
 
     for (var i = 0; i < amount; i++) {
-      bool checked = ((i + 1) % 3 == 0);
-      bool free = ((i + 1) % 5 == 0);
-
       result.add(BingoTile(
-        isFree: free,
-        isChecked: checked,
-        title: i.toString(),
-        submitters: [i.toString(), (i + 5).toString()],
-      ));
+          isFree: (i == 12),
+          isChecked: ((i + 1) % 4 == 0),
+          title: i.toString()));
     }
 
     return result;
   }
 
   @override
-  _GirdTileState createState() => _GirdTileState();
+  _GridTileState createState() => _GridTileState();
 
-  static fromSnapshot(DocumentSnapshot snap) {
-    List<String> submitters = List.castFrom<dynamic, String>(snap.data["submitters"]);
+  static BingoTile fromSnapshot(DocumentSnapshot snap) {
+    bool checked = false;
+    if (snap.data["isChecked"] != null) checked = snap.data["isChecked"];
+    
     return BingoTile(
-                isFree: snap.data["isFree"],
-                isChecked: snap.data["isChecked"],
-                submitters: submitters,
-                title: snap.data["title"],
-              );
+      reference: snap.reference,
+      isChecked: checked,
+      title: snap.data["title"],
+    );
+  }
+
+  static Future<BingoTile> fromReference(DocumentReference ref) async {
+    return fromSnapshot(await ref.get());
   }
 }
 
-class _GirdTileState extends State<BingoTile> {
+class _GridTileState extends State<BingoTile> {
   @override
   Widget build(BuildContext context) {
     return GridTile(
       child: Card(
-        color: Colors.red,
+        color: (widget.isFree)
+            ? Colors.blueAccent
+            : (widget.isChecked) ? Colors.green : Colors.red,
         child: Center(
           child: new Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Text(widget.title),
-              (widget.isFree) ? Text("isFree") : Container(),
-              (widget.isChecked) ? Text("isChecked") : Container(),
+              Text(
+                (widget.isFree) ? "Gratis" : widget.title,
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              )
             ],
           ),
         ),

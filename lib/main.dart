@@ -32,33 +32,51 @@ class HomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<HomePage> {
-  String header = "";
-  FirebaseUser currentUser;
+  String header = "Getting user...";
+  FirebaseUser authUser;
+  List<String> visibleTileIds = [];
 
   initializeUser() async {
+    await FirebaseAuth.instance.signOut();
     FirebaseUser newUser = await FirebaseAuth.instance.currentUser();
     if (newUser == null) {
       newUser = await FirebaseAuth.instance.signInAnonymously();
       DocumentReference newUserDocument = Firestore.instance
           .collection(User.collectionName)
           .document(newUser.uid);
-      List<DocumentSnapshot> docSnaps = (await Firestore.instance
+      List<DocumentSnapshot> newUserTileDocSnaps = (await Firestore.instance
               .collection(BingoTile.collectionName)
               .getDocuments())
           .documents;
 
-      List<DocumentReference> newTiles = [];
-      for (var doc in docSnaps) {
-        newTiles.add(doc.reference);
-      }
+      newUserTileDocSnaps.shuffle();
+      int max =
+          newUserTileDocSnaps.length >= 25 ? 25 : newUserTileDocSnaps.length;
+      newUserTileDocSnaps = newUserTileDocSnaps.getRange(0, max).toList();
 
-      newTiles.shuffle();
-      int max = newTiles.length >= 25 ? 25 : newTiles.length;
-      newTiles = newTiles.getRange(0, max).toList();
+      List<DocumentReference> newUserTileDocRefs = [];
+      for (var docSnap in newUserTileDocSnaps)
+        newUserTileDocRefs.add(docSnap.reference);
 
-      await newUserDocument.setData({BingoTile.collectionName: newTiles});
+      await newUserDocument
+          .setData({BingoTile.collectionName: newUserTileDocRefs});
+
+      newUserTileDocRefs
+          .forEach((docRef) => visibleTileIds.add(docRef.documentID));
+    } else {
+      DocumentSnapshot userDoc = await Firestore.instance
+          .collection(User.collectionName)
+          .document(newUser.uid)
+          .get();
+      List
+          .castFrom<dynamic, DocumentReference>(userDoc.data["tiles"])
+          .forEach((docRef) => visibleTileIds.add(docRef.documentID));
     }
-    setState(() => currentUser = newUser);
+
+    setState(() {
+      authUser = newUser;
+      header = "ID: ${authUser.uid}";
+    });
   }
 
   @override
@@ -67,42 +85,41 @@ class _MyHomePageState extends State<HomePage> {
       valueColor: AlwaysStoppedAnimation(Colors.red),
     );
 
-    if (currentUser == null) initializeUser();
+    if (authUser == null) initializeUser();
 
     return new Scaffold(
         appBar: new AppBar(
           title: new Text(widget.title),
         ),
         body: Center(
-          //TODO: (@jeroen-meijer) Change to tiles collection.
-            child: (currentUser == null)
+            child: (authUser == null)
                 ? loadingAnimation
-                : StreamBuilder<List<DocumentSnapshot>>(
+                : StreamBuilder<QuerySnapshot>(
                     stream: Firestore.instance
-                        .collection(User.collectionName)
-                        .document(currentUser.uid)
-                        .snapshots()
-                        .asyncMap((snap) async {
-                      if (snap.data != null)
-                        debugPrint(
-                            snap.data[BingoTile.collectionName].toString());
-                      List<DocumentSnapshot> tiles = <DocumentSnapshot>[];
-                      for (DocumentReference docRef
-                          in snap.data[BingoTile.collectionName]) {
-                        tiles.add(await docRef.get());
+                        .collection(BingoTile.collectionName)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return loadingAnimation;
+
+                      List<DocumentSnapshot> visibleTiles = [];
+                      for (var snap in snapshot.data.documents) {
+                        if (visibleTileIds.contains(snap.documentID))
+                          visibleTiles.add(snap);
                       }
-                      return tiles;
-                    }),
-                    builder: (context, tilesnapshot) {
-                      if (!tilesnapshot.hasData) return loadingAnimation;
 
-                      List<BingoTile> children = [];
-                      tilesnapshot.data.forEach(
-                          (snap) => children.add(BingoTile.fromSnapshot(snap)));
+                      BingoGrid grid = BingoGrid(
+                              width: 5,
+                              height: 5,
+                              documents: visibleTiles);
 
-                      return GridView.count(
-                        crossAxisCount: 5,
-                        children: children,
+                      return new Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Text(header),
+                          Text(snapshot.data.documents[0].data["title"]),
+                          grid,
+                          Text("Bingos: ${grid.amountOfBingos}")
+                        ],
                       );
                     },
                   )));
